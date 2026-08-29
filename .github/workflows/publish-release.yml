@@ -1,0 +1,47 @@
+name: "Publish APK release from artifact"
+
+# Companion to 'Build & publish APK artifacts': re-publishes the APK zip a
+# previous run uploaded as a GitHub Release. The build job's GITHUB_TOKEN
+# has no release permission; this one declares it explicitly.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run id whose gmscore-apks artifact to publish"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK artifact from run
+        uses: actions/download-artifact@v4
+        with:
+          name: gmscore-apks
+          run-id: ${{ github.event.inputs.run_id }}
+          path: /tmp/apks
+
+      - name: List APKs
+        run: |
+          find /tmp/apks -type f -printf '%f %s bytes\n' | sort
+
+      - name: Create public release with APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.event.inputs.run_id }}" --jq '.head_sha[0:7]')
+          TAG="apks-$SHA"
+          (gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 && gh release delete "$TAG" --repo "${{ github.repository }}" --yes) || true
+          gh release create "$TAG" /tmp/apks/*.apk \
+            --repo "${{ github.repository }}" \
+            --title "GmsCore APKs ($SHA)" \
+            --notes "Built from ci-repro master @ $SHA. Includes patched droidguard (PR microg/GmsCore#3750): guardWithRequest + multi-step remote handle."
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Emit release URL
+        run: |
+          echo "https://github.com/${{ github.repository }}/releases/tag/$RELEASE_TAG"
