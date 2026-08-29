@@ -1,0 +1,61 @@
+name: "Build & publish APK artifacts"
+
+# Companion workflow (NOT part of the microG-mirror evidence): assembles
+# GmsCore from the current tree and publishes a GitHub Release with the
+# APKs, so the demo-emulator pipeline can download a built microG with the
+# patched droidguard module. Keeps build.yml byte-identical for the
+# "same as microG's CI" claim.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: assemble + publish
+    runs-on: ubuntu-latest
+    env:
+      GRADLE_MICROG_VERSION_WITHOUT_GIT: 1
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/go
+          df -h
+      - name: Checkout sources
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Setup Java
+        uses: actions/setup-java@v5.7.0
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          build-scan-publish: true
+          build-scan-terms-of-use-url: "https://gradle.com/help/legal-terms-of-use"
+          build-scan-terms-of-use-agree: "yes"
+      - name: Execute Gradle assemble (Release)
+        run: "./gradlew assembleRelease"
+      - name: Collect APKs
+        run: |
+          mkdir -p /tmp/apks
+          find . -path '*/build/outputs/apk/*' -name '*.apk' -type f -exec cp {} /tmp/apks/ \;
+          find /tmp/apks -type f -printf '%f %s bytes\n' | sort
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gmscore-apks
+          path: /tmp/apks/*.apk
+
+      - name: Publish GitHub Release (draft)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          TAG="apks-$SHA"
+          gh release create "$TAG" /tmp/apks/*.apk \
+            --repo "${{ github.repository }}" \
+            --title "GmsCore APKs ($SHA)" \
+            --notes "Built from ci-repro master @ $SHA. Includes patched droidguard (PR microg/GmsCore#3750): guardWithRequest + multi-step remote handle." \
+            --draft || true
