@@ -1,31 +1,21 @@
-# microG Services
+# ci-repro — microG GmsCore build mirror
 
-[![Build status](https://github.com/microg/GmsCore/actions/workflows/build.yml/badge.svg)](https://github.com/microg/GmsCore/actions/workflows/build.yml)
-<a href=TRANSLATION.md>
-<img src="https://hosted.weblate.org/widget/microg/svg-badge.svg" alt="Translation status" />
-</a>
+Purpose: run microG's CI on code that cannot run it directly (fork PR workflows
+sit behind the first-time-contributor approval gate on `microg/GmsCore`).
 
-microG Services is a FLOSS (Free/Libre Open Source Software) framework to allow applications designed for Google Play Services to run on systems, where Play Services is not available.
+- Tree: `master` = snapshot of `digivasserver-ai/GmsCore` branch
+  `droidguard/pi-multistep-v2` (PR microg/GmsCore#3750) — droidguard files
+  byte-identical to the PR head.
+- CI: `.github/workflows/build.yml` is byte-identical to microG's
+  `.github/workflows/build.yml` (Debug + Release matrix, `assemble` + `lint`,
+  Temurin JDK 17, gradle/actions v6).
 
-### Please refer to the [wiki](https://github.com/microg/GmsCore/wiki) for downloads and instructions
+## Runs
 
-## Translations
+| run | commit | result |
+| --- | --- | --- |
+| 33248113409 | 0423616 (pre-fix) | fail — `:play-services-droidguard-core:compileReleaseKotlin` (K/V inference) |
+| 33248919469 | 654b320 (fix: `mutableMapOf<Any?, Any?>()`) | pass — Debug + Release |
 
-If you'd like to help translate microG, take a look at [TRANSLATION](TRANSLATION.md).
-
-
-License
--------
-    Copyright 2013-2025 microG Project Team
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+Provenance: 0423616 = snapshot of PR branch before fix cd512b9; 654b320 = that
+tree + the exact one-line fix from cd512b9.
