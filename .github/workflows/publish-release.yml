@@ -24,6 +24,7 @@ jobs:
           name: gmscore-apks
           run-id: ${{ github.event.inputs.run_id }}
           path: /tmp/apks
+          github-token: ${{ secrets.GH_PAT }}
 
       - name: List APKs
         run: |
