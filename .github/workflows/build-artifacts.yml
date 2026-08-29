@@ -58,4 +58,4 @@ jobs:
             --repo "${{ github.repository }}" \
             --title "GmsCore APKs ($SHA)" \
             --notes "Built from ci-repro master @ $SHA. Includes patched droidguard (PR microg/GmsCore#3750): guardWithRequest + multi-step remote handle." \
-            --draft || true
+            || true
